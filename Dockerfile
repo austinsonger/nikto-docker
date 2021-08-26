@@ -1,17 +1,23 @@
-FROM ubuntu:18.04
+FROM alpine:3.12
 
 LABEL maintainer "Austin Songer <austin@songer.pro>"
 
-RUN apt update && apt install -y git && rm -rf /var/lib/apt/lists/*
+COPY ["program/", "/nikto"]
 
-RUN git clone --depth=1 https://github.com/sullo/nikto.git && rm -rf /nikto/.git/
+ENV  PATH=${PATH}:/nikto
 
-FROM ubuntu:18.04
+RUN echo 'Installing packages for Nikto.' \
+  && apk add --update --no-cache --virtual .build-deps \
+     perl \
+     perl-net-ssleay \
+  && echo 'Creating the nikto group.' \
+  && addgroup nikto \
+  && echo 'Creating the nikto user.' \
+  && adduser -G nikto -g "Nikto user" -s /bin/sh -D nikto \
+  && echo 'Changing the ownership.' \
+  && chown -R nikto.nikto /nikto \
+  && echo 'Finishing image.'
 
-RUN apt update && apt install -y libnet-ssleay-perl && rm -rf /var/cache/apt/* && rm -rf /var/lib/apt/lists/*
+USER nikto
 
-RUN mkdir /nikto
-
-COPY --from=0 /nikto /nikto
-
-ENTRYPOINT ["/nikto/program/nikto.pl"]
+ENTRYPOINT ["nikto.pl"]
